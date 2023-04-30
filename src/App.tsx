@@ -1,11 +1,23 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
-import { DataGrid } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridRenderCellParams,
+  GridRenderEditCellParams,
+  useGridApiContext,
+} from "@mui/x-data-grid";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Badge from "@mui/material/Badge";
 import TextField from "@mui/material/TextField";
+
+interface CountryType {
+  code: string;
+  label: string;
+  phone: string;
+  suggested?: boolean;
+}
 
 // From https://bitbucket.org/atlassian/atlaskit-mk-2/raw/4ad0e56649c3e6c973e226b7efaeb28cb240ccb0/packages/core/select/src/data/countries.js
 const countries = [
@@ -433,6 +445,91 @@ const countries = [
   { code: "ZW", label: "Zimbabwe", phone: "263" },
 ];
 
+const CountriesEditComponent = ({
+  id,
+  value,
+  field,
+}: GridRenderEditCellParams) => {
+  console.log("value", value);
+  const apiRef = useGridApiContext();
+  return (
+    <Autocomplete
+      multiple
+      options={countries}
+      autoHighlight
+      openOnFocus
+      disableCloseOnSelect
+      getOptionLabel={(option) => option.label}
+      renderOption={(props, option) => (
+        <Box
+          component="li"
+          sx={{ "& > img": { mr: 2, flexShrink: 0 } }}
+          {...props}
+        >
+          <img
+            loading="lazy"
+            width="20"
+            src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
+            srcSet={`https://flagcdn.com/w40/${option.code.toLowerCase()}.png 2x`}
+            alt=""
+          />
+          {option.label} ({option.code}) +{option.phone}
+        </Box>
+      )}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          autoFocus
+          label="Choose a country"
+          inputProps={{
+            ...params.inputProps,
+            autoComplete: "new-password", // disable autocomplete and autofill
+          }}
+        />
+      )}
+      renderTags={(value) =>
+        value.map((item) => (
+          <Badge
+            key={item.code}
+            badgeContent={item.code}
+            sx={{
+              "&:not(:first-of-type)": {
+                marginLeft: "8px",
+              },
+              "& .MuiBadge-badge": {
+                backgroundColor: "red",
+                color: "#fff",
+                padding: "2px 4px",
+                fontSize: "10px",
+                fontWeight: "bold",
+              },
+            }}
+          >
+            <Box
+              component="img"
+              loading="lazy"
+              src={`https://flagcdn.com/w20/${item.code.toLowerCase()}.png`}
+              srcSet={`https://flagcdn.com/w40/${item.code.toLowerCase()}.png 2x`}
+              alt=""
+              sx={{
+                objectFit: "cover",
+                width: "20px",
+                height: "20px",
+                borderRadius: "50%",
+              }}
+            />
+          </Badge>
+        ))
+      }
+      value={value || []}
+      onChange={(event, newValue) => {
+        apiRef.current.setEditCellValue({ id, field, value: newValue });
+      }}
+      sx={{ width: "100%" }}
+    />
+  );
+};
+
 function App() {
   return (
     <Container>
@@ -451,77 +548,44 @@ function App() {
             headerName: "Shipped countries",
             width: 300,
             editable: true,
-            renderEditCell: (params) => (
-              <Autocomplete
-                multiple
-                options={countries}
-                autoHighlight
-                openOnFocus
-                disableCloseOnSelect
-                getOptionLabel={(option) => option.label}
-                renderOption={(props, option) => (
-                  <Box
-                    component="li"
-                    sx={{ "& > img": { mr: 2, flexShrink: 0 } }}
-                    {...props}
-                  >
-                    <img
-                      loading="lazy"
-                      width="20"
-                      src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
-                      srcSet={`https://flagcdn.com/w40/${option.code.toLowerCase()}.png 2x`}
-                      alt=""
-                    />
-                    {option.label} ({option.code}) +{option.phone}
-                  </Box>
-                )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    autoFocus
-                    label="Choose a country"
-                    inputProps={{
-                      ...params.inputProps,
-                      autoComplete: "new-password", // disable autocomplete and autofill
+            renderEditCell: (params) => <CountriesEditComponent {...params} />,
+            renderCell: (
+              params: GridRenderCellParams<any, Array<CountryType>>
+            ) => (
+              <Box sx={{ display: "flex" }}>
+                {params.value?.map((item) => (
+                  <Badge
+                    key={item.code}
+                    badgeContent={item.code}
+                    sx={{
+                      "&:not(:first-of-type)": {
+                        marginLeft: "8px",
+                      },
+                      "& .MuiBadge-badge": {
+                        backgroundColor: "red",
+                        color: "#fff",
+                        padding: "2px 4px",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                      },
                     }}
-                  />
-                )}
-                renderTags={(value) =>
-                  value.map((item) => (
-                    <Badge
-                      key={item.code}
-                      badgeContent={item.code}
+                  >
+                    <Box
+                      component="img"
+                      loading="lazy"
+                      src={`https://flagcdn.com/w20/${item.code.toLowerCase()}.png`}
+                      srcSet={`https://flagcdn.com/w40/${item.code.toLowerCase()}.png 2x`}
+                      alt=""
                       sx={{
-                        "&:not(:first-of-type)": {
-                          marginLeft: "8px",
-                        },
-                        "& .MuiBadge-badge": {
-                          backgroundColor: "red",
-                          color: "#fff",
-                          padding: "2px 4px",
-                          fontSize: "10px",
-                          fontWeight: "bold",
-                        },
+                        objectFit: "cover",
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
                       }}
-                    >
-                      <Box
-                        component="img"
-                        loading="lazy"
-                        src={`https://flagcdn.com/w20/${item.code.toLowerCase()}.png`}
-                        srcSet={`https://flagcdn.com/w40/${item.code.toLowerCase()}.png 2x`}
-                        alt=""
-                        sx={{
-                          objectFit: "cover",
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "50%",
-                        }}
-                      />
-                    </Badge>
-                  ))
-                }
-                sx={{ width: "100%" }}
-              />
+                    />
+                  </Badge>
+                ))}
+              </Box>
             ),
           },
           {
