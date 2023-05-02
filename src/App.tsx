@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { v4 } from "uuid";
 import CssBaseline from "@mui/material/CssBaseline";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -12,6 +13,7 @@ import {
   GridRowsProp,
   GridToolbarContainer,
   useGridApiContext,
+  useGridApiEventHandler,
 } from "@mui/x-data-grid";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -541,21 +543,24 @@ const CountriesEditComponent = ({
   );
 };
 
-interface EditToolbarProps {
-  setRows: (newRows: (oldRows: GridRowsProp) => GridRowsProp) => void;
-  setRowModesModel: (
-    newModel: (oldModel: GridRowModesModel) => GridRowModesModel
-  ) => void;
-}
-const EditToolbar = ({ setRows, setRowModesModel }: EditToolbarProps) => {
+const EditToolbar2 = () => {
+  const apiRef = useGridApiContext();
+  useGridApiEventHandler(
+    apiRef,
+    "rowModesModelChange",
+    (params, event, details) => {
+      console.log("params", params);
+      console.log("details", details);
+    }
+  );
   return (
     <GridToolbarContainer>
       <Button
         color="primary"
         onClick={() => {
-          const id = Math.random();
-          setRows((prev) => [
-            ...prev,
+          const id = v4();
+          apiRef.current.setRows([
+            ...apiRef.current.getSortedRows(),
             {
               id,
               name: "New",
@@ -564,16 +569,69 @@ const EditToolbar = ({ setRows, setRowModesModel }: EditToolbarProps) => {
               isNew: true,
             },
           ]);
-          setRowModesModel((oldModel) => ({
-            ...oldModel,
-            [id]: { mode: GridRowModes.Edit, fieldToFocus: "name" },
-          }));
+          apiRef.current.startRowEditMode({ id, fieldToFocus: "name" });
         }}
       >
         Add record
       </Button>
     </GridToolbarContainer>
   );
+};
+
+const Actions = ({ rowId }: { rowId: string | number }) => {
+  const apiRef = useGridApiContext();
+  const editMdoe = apiRef.current.getRowMode(rowId);
+  if (editMdoe === GridRowModes.Edit) {
+    return (
+      <>
+        <GridActionsCellItem
+          icon={<SaveIcon />}
+          label="Save"
+          onClick={() => {
+            apiRef.current.stopRowEditMode({ id: rowId });
+          }}
+        />
+        <GridActionsCellItem
+          icon={<CancelIcon />}
+          label="Cancel"
+          className="textPrimary"
+          onClick={() => {
+            apiRef.current.stopRowEditMode({
+              id: rowId,
+              ignoreModifications: true,
+            });
+            apiRef.current.updateRows([
+              { _action: "delete", ...apiRef.current.getRow(rowId) },
+            ]);
+          }}
+          color="inherit"
+        />
+      </>
+    );
+  }
+  return <></>;
+  // return (
+  //   <>
+  //     <GridActionsCellItem
+  //       icon={<EditIcon />}
+  //       label="Edit"
+  //       className="textPrimary"
+  //       onClick={() =>
+  //         setRowModesModel({
+  //           ...rowModesModel,
+  //           [id]: { mode: GridRowModes.Edit },
+  //         })
+  //       }
+  //       color="inherit"
+  //     />
+  //     <GridActionsCellItem
+  //       icon={<DeleteIcon />}
+  //       label="Delete"
+  //       onClick={() => setRows(rows.filter((row) => row.id !== id))}
+  //       color="inherit"
+  //     />
+  //   </>
+  // );
 };
 
 function App() {
@@ -586,7 +644,6 @@ function App() {
       price: 120,
     },
   ]);
-  const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   return (
     <Container>
       <CssBaseline />
@@ -673,90 +730,87 @@ function App() {
             width: 100,
             cellClassName: "actions",
             getActions: ({ id }) => {
-              const isInEditMode =
-                rowModesModel[id]?.mode === GridRowModes.Edit;
+              return [<Actions rowId={id} />];
+              // const isInEditMode =
+              //   rowModesModel[id]?.mode === GridRowModes.Edit;
 
-              if (isInEditMode) {
-                return [
-                  <GridActionsCellItem
-                    icon={<SaveIcon />}
-                    label="Save"
-                    onClick={() =>
-                      setRowModesModel({
-                        ...rowModesModel,
-                        [id]: { mode: GridRowModes.View },
-                      })
-                    }
-                  />,
-                  <GridActionsCellItem
-                    icon={<CancelIcon />}
-                    label="Cancel"
-                    className="textPrimary"
-                    onClick={() => {
-                      setRowModesModel({
-                        ...rowModesModel,
-                        [id]: {
-                          mode: GridRowModes.View,
-                          ignoreModifications: true,
-                        },
-                      });
+              // if (isInEditMode) {
+              //   return [
+              //     <GridActionsCellItem
+              //       icon={<SaveIcon />}
+              //       label="Save"
+              //       onClick={() =>
+              //         setRowModesModel({
+              //           ...rowModesModel,
+              //           [id]: { mode: GridRowModes.View },
+              //         })
+              //       }
+              //     />,
+              //     <GridActionsCellItem
+              //       icon={<CancelIcon />}
+              //       label="Cancel"
+              //       className="textPrimary"
+              //       onClick={() => {
+              //         setRowModesModel({
+              //           ...rowModesModel,
+              //           [id]: {
+              //             mode: GridRowModes.View,
+              //             ignoreModifications: true,
+              //           },
+              //         });
 
-                      const editedRow = rows.find((row) => row.id === id)!;
-                      if (
-                        (editedRow as typeof editedRow & { isNew?: boolean })
-                          .isNew
-                      ) {
-                        setRows(rows.filter((row) => row.id !== id));
-                      }
-                    }}
-                    color="inherit"
-                  />,
-                ];
-              }
+              //         const editedRow = rows.find((row) => row.id === id)!;
+              //         if (
+              //           (editedRow as typeof editedRow & { isNew?: boolean })
+              //             .isNew
+              //         ) {
+              //           setRows(rows.filter((row) => row.id !== id));
+              //         }
+              //       }}
+              //       color="inherit"
+              //     />,
+              //   ];
+              // }
 
-              return [
-                <GridActionsCellItem
-                  icon={<EditIcon />}
-                  label="Edit"
-                  className="textPrimary"
-                  onClick={() =>
-                    setRowModesModel({
-                      ...rowModesModel,
-                      [id]: { mode: GridRowModes.Edit },
-                    })
-                  }
-                  color="inherit"
-                />,
-                <GridActionsCellItem
-                  icon={<DeleteIcon />}
-                  label="Delete"
-                  onClick={() => setRows(rows.filter((row) => row.id !== id))}
-                  color="inherit"
-                />,
-              ];
+              // return [
+              //   <GridActionsCellItem
+              //     icon={<EditIcon />}
+              //     label="Edit"
+              //     className="textPrimary"
+              //     onClick={() =>
+              //       setRowModesModel({
+              //         ...rowModesModel,
+              //         [id]: { mode: GridRowModes.Edit },
+              //       })
+              //     }
+              //     color="inherit"
+              //   />,
+              //   <GridActionsCellItem
+              //     icon={<DeleteIcon />}
+              //     label="Delete"
+              //     onClick={() => setRows(rows.filter((row) => row.id !== id))}
+              //     color="inherit"
+              //   />,
+              // ];
             },
           },
         ]}
         editMode="row"
         rows={rows}
-        rowModesModel={rowModesModel}
-        onRowModesModelChange={(data) => setRowModesModel(data)}
         onRowEditStart={(_, event) => {
           event.defaultMuiPrevented = true;
         }}
         onRowEditStop={(_, event) => {
           event.defaultMuiPrevented = true;
         }}
-        processRowUpdate={(newRow) => {
-          const updatedRow = { ...newRow, isNew: false };
-          setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
-          return updatedRow;
-        }}
+        // processRowUpdate={(newRow) => {
+        //   console.log("newRow", newRow);
+        //   const updatedRow = { ...newRow, isNew: false };
+        //   setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
+        //   return updatedRow;
+        // }}
         slots={{
-          toolbar: EditToolbar,
-        }}
-        slotProps={{
-          toolbar: { setRows, setRowModesModel },
+          toolbar: EditToolbar2,
         }}
       />
     </Container>

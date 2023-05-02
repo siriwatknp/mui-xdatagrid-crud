@@ -16,9 +16,11 @@
     "@mui/material": "5.12.2",
     "@mui/x-data-grid": "6.3.0",
     "@tanstack/react-query": "4.29.5",
+    "@types/uuid": "9.0.1",
     "msw": "1.2.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "uuid": "9.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",
