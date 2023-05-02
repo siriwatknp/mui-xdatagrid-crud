@@ -609,29 +609,29 @@ const Actions = ({ rowId }: { rowId: string | number }) => {
       </>
     );
   }
-  return <></>;
-  // return (
-  //   <>
-  //     <GridActionsCellItem
-  //       icon={<EditIcon />}
-  //       label="Edit"
-  //       className="textPrimary"
-  //       onClick={() =>
-  //         setRowModesModel({
-  //           ...rowModesModel,
-  //           [id]: { mode: GridRowModes.Edit },
-  //         })
-  //       }
-  //       color="inherit"
-  //     />
-  //     <GridActionsCellItem
-  //       icon={<DeleteIcon />}
-  //       label="Delete"
-  //       onClick={() => setRows(rows.filter((row) => row.id !== id))}
-  //       color="inherit"
-  //     />
-  //   </>
-  // );
+  return (
+    <>
+      <GridActionsCellItem
+        icon={<EditIcon />}
+        label="Edit"
+        className="textPrimary"
+        onClick={() => {
+          apiRef.current.startRowEditMode({ id: rowId });
+        }}
+        color="inherit"
+      />
+      <GridActionsCellItem
+        icon={<DeleteIcon />}
+        label="Delete"
+        onClick={() => {
+          apiRef.current.updateRows([
+            { _action: "delete", ...apiRef.current.getRow(rowId) },
+          ]);
+        }}
+        color="inherit"
+      />
+    </>
+  );
 };
 
 function App() {
@@ -803,14 +803,24 @@ function App() {
         onRowEditStop={(_, event) => {
           event.defaultMuiPrevented = true;
         }}
-        // processRowUpdate={(newRow) => {
-        //   console.log("newRow", newRow);
-        //   const updatedRow = { ...newRow, isNew: false };
-        //   setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
-        //   return updatedRow;
-        // }}
+        processRowUpdate={(newRow) => {
+          const existingIndex = rows.findIndex((item) => item.id !== newRow.id);
+          if (existingIndex === -1) {
+            setRows([...rows, newRow]);
+          } else {
+            setRows([
+              ...rows.slice(0, existingIndex),
+              newRow,
+              ...rows.slice(existingIndex),
+            ]);
+          }
+          return newRow;
+        }}
         slots={{
           toolbar: EditToolbar2,
+        }}
+        sx={{
+          minHeight: 300,
         }}
       />
     </Container>
