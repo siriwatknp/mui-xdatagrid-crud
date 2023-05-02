@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { v4 } from "uuid";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import CssBaseline from "@mui/material/CssBaseline";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -19,6 +20,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Badge from "@mui/material/Badge";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -26,6 +28,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Close";
+
+import type { Product } from "./mocks/browser";
 
 interface CountryType {
   code: string;
@@ -545,14 +549,6 @@ const CountriesEditComponent = ({
 
 const EditToolbar2 = () => {
   const apiRef = useGridApiContext();
-  useGridApiEventHandler(
-    apiRef,
-    "rowModesModelChange",
-    (params, event, details) => {
-      console.log("params", params);
-      console.log("details", details);
-    }
-  );
   return (
     <GridToolbarContainer>
       <Button
@@ -581,14 +577,72 @@ const EditToolbar2 = () => {
 const Actions = ({ rowId }: { rowId: string | number }) => {
   const apiRef = useGridApiContext();
   const editMdoe = apiRef.current.getRowMode(rowId);
+  const query = useQuery({
+    queryKey: ["products"],
+    queryFn: () =>
+      fetch("/products").then((res) => res.json() as Promise<Product[]>),
+  });
+  const deleter = useMutation({
+    mutationFn: () =>
+      fetch(`/products/${rowId}`, {
+        method: "DELETE",
+      }),
+  });
+  const creator = useMutation({
+    mutationFn: async (data: Product) => {
+      const res = await fetch(`/products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        return res;
+      } else {
+        throw new Error("something went wrong!");
+      }
+    },
+  });
+  const updater = useMutation({
+    mutationFn: (data: Product) =>
+      fetch(`/products/${rowId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+  });
   if (editMdoe === GridRowModes.Edit) {
     return (
       <>
         <GridActionsCellItem
-          icon={<SaveIcon />}
+          icon={
+            updater.isLoading || creator.isLoading ? (
+              <CircularProgress size="2rem" />
+            ) : (
+              <SaveIcon />
+            )
+          }
           label="Save"
           onClick={() => {
-            apiRef.current.stopRowEditMode({ id: rowId });
+            const existingIndex = (query.data || []).findIndex(
+              (item) => item.id === rowId
+            );
+            if (existingIndex === -1) {
+              creator.mutate(apiRef.current.getRow(rowId)!, {
+                onSuccess: () => {
+                  apiRef.current.stopRowEditMode({ id: rowId });
+                },
+              });
+            } else {
+              updater.mutate(apiRef.current.getRow(rowId)!, {
+                onSuccess: () => {
+                  apiRef.current.stopRowEditMode({ id: rowId });
+                },
+              });
+            }
           }}
         />
         <GridActionsCellItem
@@ -600,9 +654,14 @@ const Actions = ({ rowId }: { rowId: string | number }) => {
               id: rowId,
               ignoreModifications: true,
             });
-            apiRef.current.updateRows([
-              { _action: "delete", ...apiRef.current.getRow(rowId) },
-            ]);
+            const existingIndex = (query.data || []).findIndex(
+              (item) => item.id === rowId
+            );
+            if (existingIndex === -1) {
+              apiRef.current.updateRows([
+                { _action: "delete", ...apiRef.current.getRow(rowId) },
+              ]);
+            }
           }}
           color="inherit"
         />
@@ -621,12 +680,16 @@ const Actions = ({ rowId }: { rowId: string | number }) => {
         color="inherit"
       />
       <GridActionsCellItem
-        icon={<DeleteIcon />}
+        icon={deleter.isLoading ? <CircularProgress /> : <DeleteIcon />}
         label="Delete"
-        onClick={() => {
-          apiRef.current.updateRows([
-            { _action: "delete", ...apiRef.current.getRow(rowId) },
-          ]);
+        onClick={async () => {
+          await deleter.mutateAsync(undefined, {
+            onSuccess: () => {
+              apiRef.current.updateRows([
+                { _action: "delete", ...apiRef.current.getRow(rowId) },
+              ]);
+            },
+          });
         }}
         color="inherit"
       />
@@ -635,15 +698,12 @@ const Actions = ({ rowId }: { rowId: string | number }) => {
 };
 
 function App() {
-  const [rows, setRows] = useState([
-    { id: "1", name: "spray", manufacturedDate: new Date(), price: 200 },
-    {
-      id: "2",
-      name: "foam",
-      manufacturedDate: new Date("2021-05-22"),
-      price: 120,
-    },
-  ]);
+  const query = useQuery({
+    queryKey: ["products"],
+    queryFn: () =>
+      fetch("/products").then((res) => res.json() as Promise<Product[]>),
+  });
+  const rows = query.data || [];
   return (
     <Container>
       <CssBaseline />
@@ -651,6 +711,7 @@ function App() {
         DataGrid - CRUD
       </Typography>
       <DataGrid
+        loading={query.isLoading}
         columns={[
           {
             field: "id",
@@ -714,7 +775,9 @@ function App() {
             editable: true,
             type: "date",
             valueFormatter: (params) =>
-              (params.value as Date | null)?.toDateString(),
+              typeof params.value === "string"
+                ? new Date(params.value)
+                : (params.value as Date | null)?.toDateString(),
           },
           {
             field: "price",
@@ -731,67 +794,6 @@ function App() {
             cellClassName: "actions",
             getActions: ({ id }) => {
               return [<Actions rowId={id} />];
-              // const isInEditMode =
-              //   rowModesModel[id]?.mode === GridRowModes.Edit;
-
-              // if (isInEditMode) {
-              //   return [
-              //     <GridActionsCellItem
-              //       icon={<SaveIcon />}
-              //       label="Save"
-              //       onClick={() =>
-              //         setRowModesModel({
-              //           ...rowModesModel,
-              //           [id]: { mode: GridRowModes.View },
-              //         })
-              //       }
-              //     />,
-              //     <GridActionsCellItem
-              //       icon={<CancelIcon />}
-              //       label="Cancel"
-              //       className="textPrimary"
-              //       onClick={() => {
-              //         setRowModesModel({
-              //           ...rowModesModel,
-              //           [id]: {
-              //             mode: GridRowModes.View,
-              //             ignoreModifications: true,
-              //           },
-              //         });
-
-              //         const editedRow = rows.find((row) => row.id === id)!;
-              //         if (
-              //           (editedRow as typeof editedRow & { isNew?: boolean })
-              //             .isNew
-              //         ) {
-              //           setRows(rows.filter((row) => row.id !== id));
-              //         }
-              //       }}
-              //       color="inherit"
-              //     />,
-              //   ];
-              // }
-
-              // return [
-              //   <GridActionsCellItem
-              //     icon={<EditIcon />}
-              //     label="Edit"
-              //     className="textPrimary"
-              //     onClick={() =>
-              //       setRowModesModel({
-              //         ...rowModesModel,
-              //         [id]: { mode: GridRowModes.Edit },
-              //       })
-              //     }
-              //     color="inherit"
-              //   />,
-              //   <GridActionsCellItem
-              //     icon={<DeleteIcon />}
-              //     label="Delete"
-              //     onClick={() => setRows(rows.filter((row) => row.id !== id))}
-              //     color="inherit"
-              //   />,
-              // ];
             },
           },
         ]}
@@ -803,24 +805,27 @@ function App() {
         onRowEditStop={(_, event) => {
           event.defaultMuiPrevented = true;
         }}
-        processRowUpdate={(newRow) => {
-          const existingIndex = rows.findIndex((item) => item.id !== newRow.id);
-          if (existingIndex === -1) {
-            setRows([...rows, newRow]);
-          } else {
-            setRows([
-              ...rows.slice(0, existingIndex),
-              newRow,
-              ...rows.slice(existingIndex),
-            ]);
-          }
-          return newRow;
-        }}
+        // processRowUpdate={(newRow) => {
+        //   const existingIndex = rows.findIndex((item) => item.id !== newRow.id);
+        //   if (existingIndex === -1) {
+        //     setRows([...rows, newRow]);
+        //   } else {
+        //     setRows([
+        //       ...rows.slice(0, existingIndex),
+        //       newRow,
+        //       ...rows.slice(existingIndex),
+        //     ]);
+        //   }
+        //   return newRow;
+        // }}
         slots={{
           toolbar: EditToolbar2,
         }}
         sx={{
           minHeight: 300,
+          "& .MuiDataGrid-virtualScroller": {
+            flexGrow: 1,
+          },
         }}
       />
     </Container>
