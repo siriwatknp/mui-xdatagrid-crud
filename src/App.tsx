@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { v4 } from "uuid";
 import Autocomplete from "@mui/joy/Autocomplete";
 import AutocompleteOption from "@mui/joy/AutocompleteOption";
@@ -8,13 +7,13 @@ import ListItemContent from "@mui/joy/ListItemContent";
 import Button from "@mui/joy/Button";
 import CssBaseline from "@mui/joy/CssBaseline";
 import Container from "@mui/joy/Container";
+import CircularProgress from "@mui/joy/CircularProgress";
 import Typography from "@mui/joy/Typography";
 import {
   DataGrid,
   GridToolbarContainer,
   GridActionsCellItem,
   useGridApiContext,
-  useGridApiRef,
 } from "@mui/x-data-grid";
 import { unstable_joySlots as joySlots } from "@mui/x-data-grid/joy";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -60,6 +59,29 @@ const EditToolbar = () => {
   );
 };
 
+const DeleteAction = ({ rowId }: { rowId: string }) => {
+  const apiRef = useGridApiContext();
+  const deleter = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/products/${id}`, {
+        method: "DELETE",
+      }),
+  });
+  return (
+    <GridActionsCellItem
+      icon={
+        deleter.isLoading ? <CircularProgress thickness={2} /> : <DeleteIcon />
+      }
+      label="Delete"
+      onClick={async () => {
+        await deleter.mutateAsync(rowId);
+        apiRef.current.updateRows([{ id: rowId, _action: "delete" }]);
+      }}
+      color="inherit"
+    />
+  );
+};
+
 function App() {
   const query = useQuery({
     queryKey: ["products"],
@@ -92,12 +114,6 @@ function App() {
         body: JSON.stringify(data),
       }),
   });
-  const deleter = useMutation({
-    mutationFn: (id: string) =>
-      fetch(`/products/${id}`, {
-        method: "DELETE",
-      }),
-  });
   const rows = query.data ?? [];
   return (
     <Container>
@@ -106,12 +122,7 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
-        loading={
-          query.isLoading ||
-          creator.isLoading ||
-          updater.isLoading ||
-          deleter.isLoading
-        }
+        loading={query.isLoading || creator.isLoading || updater.isLoading}
         editMode="row"
         processRowUpdate={async (row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
@@ -215,17 +226,7 @@ function App() {
           {
             field: "actions",
             type: "actions",
-            getActions: (params) => [
-              <GridActionsCellItem
-                icon={<DeleteIcon />}
-                label="Delete"
-                onClick={async () => {
-                  await deleter.mutateAsync(params.row.id);
-                  await query.refetch();
-                }}
-                color="inherit"
-              />,
-            ],
+            getActions: (params) => [<DeleteAction rowId={params.row.id} />],
           },
         ]}
         rows={rows}
