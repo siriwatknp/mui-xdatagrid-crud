@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { v4 } from "uuid";
 import Autocomplete from "@mui/joy/Autocomplete";
 import AutocompleteOption from "@mui/joy/AutocompleteOption";
 import Box from "@mui/joy/Box";
@@ -33,7 +34,7 @@ const EditToolbar = () => {
       <Button
         color="primary"
         onClick={() => {
-          const id = "new-row-1";
+          const id = `__new-${v4()}`;
           apiRef.current.updateRows([
             {
               id,
@@ -65,10 +66,18 @@ function App() {
       </Typography>
       <DataGrid
         editMode="row"
+        processRowUpdate={(newRow) => {
+          const newId = v4(); // generate unique id
+          const updatedRow = { ...newRow, id: newId };
+          setRows((prevRows) => [...prevRows, updatedRow]);
+          return updatedRow;
+        }}
         columns={[
           {
             field: "id",
             headerName: "ID",
+            valueFormatter: (params) =>
+              params.value.startsWith("__new-") ? "" : params.value,
           },
           {
             field: "manufacturedCountry",
