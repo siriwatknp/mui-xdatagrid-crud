@@ -40,6 +40,14 @@ function App() {
             editable: true,
             type: "number",
           },
+          {
+            field: "manufacturedDate",
+            headerName: "Manufactured date",
+            width: 160,
+            editable: true,
+            type: "date",
+            valueFormatter: (params) => (params.value as Date).toDateString(),
+          },
         ]}
         rows={DATA}
         slots={joySlots}
