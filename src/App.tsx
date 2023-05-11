@@ -4,10 +4,15 @@ import AutocompleteOption from "@mui/joy/AutocompleteOption";
 import Box from "@mui/joy/Box";
 import ListItemDecorator from "@mui/joy/ListItemDecorator";
 import ListItemContent from "@mui/joy/ListItemContent";
+import Button from "@mui/joy/Button";
 import CssBaseline from "@mui/joy/CssBaseline";
 import Container from "@mui/joy/Container";
 import Typography from "@mui/joy/Typography";
-import { DataGrid } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridToolbarContainer,
+  useGridApiContext,
+} from "@mui/x-data-grid";
 import { unstable_joySlots as joySlots } from "@mui/x-data-grid/joy";
 import countries from "./countries.json";
 
@@ -20,6 +25,35 @@ const DATA = [
     price: 120,
   },
 ];
+
+const EditToolbar = () => {
+  const apiRef = useGridApiContext();
+  return (
+    <GridToolbarContainer>
+      <Button
+        color="primary"
+        onClick={() => {
+          const id = "new-row-1";
+          apiRef.current.updateRows([
+            {
+              id,
+              name: "New",
+              manufacturedDate: null,
+              manufacturedCountry: null,
+              price: 0,
+            },
+          ]);
+          apiRef.current.startRowEditMode({
+            id,
+            fieldToFocus: "manufacturedCountry",
+          });
+        }}
+      >
+        Add record
+      </Button>
+    </GridToolbarContainer>
+  );
+};
 
 function App() {
   const [rows, setRows] = useState(DATA);
@@ -114,11 +148,14 @@ function App() {
             width: 160,
             editable: true,
             type: "date",
-            valueFormatter: (params) => (params.value as Date).toDateString(),
+            valueFormatter: (params) => (params.value as Date)?.toDateString(),
           },
         ]}
         rows={rows}
-        slots={joySlots}
+        slots={{
+          ...joySlots,
+          toolbar: EditToolbar,
+        }}
       />
     </Container>
   );
