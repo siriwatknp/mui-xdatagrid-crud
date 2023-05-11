@@ -41,7 +41,9 @@ function App() {
                 openOnFocus
                 options={countries}
                 getOptionLabel={(option) => option.label}
+                variant="plain"
                 sx={{
+                  "--Input-focusedHighlight": "transparent",
                   width: "100%",
                 }}
               />
