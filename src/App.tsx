@@ -28,6 +28,7 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
+        editMode="row"
         columns={[
           {
             field: "id",
