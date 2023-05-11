@@ -66,9 +66,16 @@ function App() {
       </Typography>
       <DataGrid
         editMode="row"
-        processRowUpdate={(newRow) => {
+        processRowUpdate={(row) => {
+          const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
+          if (isExistingRow) {
+            setRows((prevRows) =>
+              prevRows.map((item) => (item.id === row.id ? row : item))
+            );
+            return row;
+          }
           const newId = v4(); // generate unique id
-          const updatedRow = { ...newRow, id: newId };
+          const updatedRow = { ...row, id: newId };
           setRows((prevRows) => [...prevRows, updatedRow]);
           return updatedRow;
         }}
