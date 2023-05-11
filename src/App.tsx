@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { v4 } from "uuid";
 import Autocomplete from "@mui/joy/Autocomplete";
 import AutocompleteOption from "@mui/joy/AutocompleteOption";
@@ -14,11 +14,12 @@ import {
   GridToolbarContainer,
   GridActionsCellItem,
   useGridApiContext,
+  useGridApiRef,
 } from "@mui/x-data-grid";
 import { unstable_joySlots as joySlots } from "@mui/x-data-grid/joy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import countries from "./countries.json";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 const DATA = [
   { id: "1", name: "spray", manufacturedDate: new Date(), price: 200 },
@@ -60,10 +61,27 @@ const EditToolbar = () => {
 };
 
 function App() {
+  const apiRef = useGridApiRef();
   const query = useQuery({
     queryKey: ["products"],
     queryFn: () =>
       fetch("/products").then((res) => res.json() as Promise<typeof DATA>),
+  });
+  const creator = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        return res;
+      } else {
+        throw new Error("something went wrong!");
+      }
+    },
   });
   const rows = query.data ?? [];
   const [, setRows] = useState(rows); // to be removed later
@@ -74,9 +92,9 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
-        loading={query.isLoading}
+        loading={query.isLoading || creator.isLoading}
         editMode="row"
-        processRowUpdate={(row) => {
+        processRowUpdate={async (row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
           if (isExistingRow) {
             setRows((prevRows) =>
@@ -84,10 +102,13 @@ function App() {
             );
             return row;
           }
-          const newId = v4(); // generate unique id
-          const updatedRow = { ...row, id: newId };
-          setRows((prevRows) => [...prevRows, updatedRow]);
+          const updatedRow = { ...row, id: v4() };
+          await creator.mutateAsync(updatedRow);
+          await query.refetch();
           return updatedRow;
+        }}
+        onProcessRowUpdateError={(error) => {
+          console.log(error);
         }}
         columns={[
           {

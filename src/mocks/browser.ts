@@ -4,6 +4,10 @@ import { factory, primaryKey } from "@mswjs/data";
 export interface Product {
   id: string;
   name: string;
+  manufacturedCountry: {
+    code: string;
+    label: string;
+  };
   manufacturedDate: string;
   price: number;
 }
@@ -13,6 +17,10 @@ const db = factory({
     id: primaryKey(String),
     name: String,
     manufacturedDate: Date,
+    manufacturedCountry: {
+      code: String,
+      label: String,
+    },
     price: Number,
   },
 });
@@ -72,7 +80,7 @@ const handlers = [
   }),
   rest.delete("/products/:id", (req, res, ctx) => {
     const deletedEntity = db.product.delete({
-      strict: true,
+      // strict: true,
       where: {
         id: {
           equals: req.params.id as string,
