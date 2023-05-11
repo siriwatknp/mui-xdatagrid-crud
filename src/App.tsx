@@ -92,8 +92,13 @@ function App() {
         body: JSON.stringify(data),
       }),
   });
+  const deleter = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/products/${id}`, {
+        method: "DELETE",
+      }),
+  });
   const rows = query.data ?? [];
-  const [, setRows] = useState(rows); // to be removed later
   return (
     <Container>
       <CssBaseline />
@@ -101,7 +106,12 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
-        loading={query.isLoading || creator.isLoading || updater.isLoading}
+        loading={
+          query.isLoading ||
+          creator.isLoading ||
+          updater.isLoading ||
+          deleter.isLoading
+        }
         editMode="row"
         processRowUpdate={async (row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
@@ -209,10 +219,9 @@ function App() {
               <GridActionsCellItem
                 icon={<DeleteIcon />}
                 label="Delete"
-                onClick={() => {
-                  setRows((prevRows) =>
-                    prevRows.filter((item) => item.id !== params.row.id)
-                  );
+                onClick={async () => {
+                  await deleter.mutateAsync(params.row.id);
+                  await query.refetch();
                 }}
                 color="inherit"
               />,
