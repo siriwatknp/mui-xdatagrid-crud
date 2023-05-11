@@ -63,6 +63,13 @@ function App() {
                   "--Input-focusedHighlight": "transparent",
                   width: "100%",
                 }}
+                onChange={(event, value) => {
+                  params.api.setEditCellValue({
+                    field: params.field,
+                    id: params.id,
+                    value,
+                  });
+                }}
                 renderOption={(props, option) => (
                   <AutocompleteOption {...props}>
                     <ListItemDecorator>
