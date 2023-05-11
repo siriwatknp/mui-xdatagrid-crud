@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Autocomplete from "@mui/joy/Autocomplete";
 import AutocompleteOption from "@mui/joy/AutocompleteOption";
 import Box from "@mui/joy/Box";
@@ -21,6 +22,7 @@ const DATA = [
 ];
 
 function App() {
+  const [rows, setRows] = useState(DATA);
   return (
     <Container>
       <CssBaseline />
@@ -115,7 +117,7 @@ function App() {
             valueFormatter: (params) => (params.value as Date).toDateString(),
           },
         ]}
-        rows={DATA}
+        rows={rows}
         slots={joySlots}
       />
     </Container>
