@@ -12,9 +12,11 @@ import Typography from "@mui/joy/Typography";
 import {
   DataGrid,
   GridToolbarContainer,
+  GridActionsCellItem,
   useGridApiContext,
 } from "@mui/x-data-grid";
 import { unstable_joySlots as joySlots } from "@mui/x-data-grid/joy";
+import DeleteIcon from "@mui/icons-material/Delete";
 import countries from "./countries.json";
 
 const DATA = [
@@ -148,13 +150,13 @@ function App() {
           {
             field: "name",
             headerName: "Name",
-            width: 160,
+            width: 100,
             editable: true,
           },
           {
             field: "price",
             headerName: "Price",
-            width: 160,
+            width: 100,
             editable: true,
             type: "number",
           },
@@ -166,12 +168,29 @@ function App() {
             type: "date",
             valueFormatter: (params) => (params.value as Date)?.toDateString(),
           },
+          {
+            field: "actions",
+            type: "actions",
+            getActions: (params) => [
+              <GridActionsCellItem
+                icon={<DeleteIcon />}
+                label="Delete"
+                onClick={() => {
+                  setRows((prevRows) =>
+                    prevRows.filter((item) => item.id !== params.row.id)
+                  );
+                }}
+                color="inherit"
+              />,
+            ],
+          },
         ]}
         rows={rows}
         slots={{
           ...joySlots,
           toolbar: EditToolbar,
         }}
+        sx={{ minHeight: 400 }}
       />
     </Container>
   );
