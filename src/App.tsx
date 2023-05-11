@@ -18,6 +18,7 @@ import {
 import { unstable_joySlots as joySlots } from "@mui/x-data-grid/joy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import countries from "./countries.json";
+import { useQuery } from "@tanstack/react-query";
 
 const DATA = [
   { id: "1", name: "spray", manufacturedDate: new Date(), price: 200 },
@@ -59,14 +60,13 @@ const EditToolbar = () => {
 };
 
 function App() {
-  const [rows, setRows] = useState<typeof DATA>([]);
-  useEffect(() => {
-    fetch("/products")
-      .then((response) => response.json())
-      .then((data) => {
-        setRows(data);
-      });
-  }, []);
+  const query = useQuery({
+    queryKey: ["products"],
+    queryFn: () =>
+      fetch("/products").then((res) => res.json() as Promise<typeof DATA>),
+  });
+  const rows = query.data ?? [];
+  const [, setRows] = useState(rows); // to be removed later
   return (
     <Container>
       <CssBaseline />
@@ -74,7 +74,7 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
-        loading={rows.length === 0}
+        loading={query.isLoading}
         editMode="row"
         processRowUpdate={(row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
