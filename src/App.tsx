@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { v4 } from "uuid";
 import Autocomplete from "@mui/joy/Autocomplete";
 import AutocompleteOption from "@mui/joy/AutocompleteOption";
@@ -59,7 +59,14 @@ const EditToolbar = () => {
 };
 
 function App() {
-  const [rows, setRows] = useState(DATA);
+  const [rows, setRows] = useState<typeof DATA>([]);
+  useEffect(() => {
+    fetch("/products")
+      .then((response) => response.json())
+      .then((data) => {
+        setRows(data);
+      });
+  }, []);
   return (
     <Container>
       <CssBaseline />
@@ -67,6 +74,7 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
+        loading={rows.length === 0}
         editMode="row"
         processRowUpdate={(row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
@@ -166,7 +174,8 @@ function App() {
             width: 160,
             editable: true,
             type: "date",
-            valueFormatter: (params) => (params.value as Date)?.toDateString(),
+            valueFormatter: (params) =>
+              params.value ? new Date(params.value).toDateString() : "",
           },
           {
             field: "actions",
@@ -190,7 +199,10 @@ function App() {
           ...joySlots,
           toolbar: EditToolbar,
         }}
-        sx={{ minHeight: 400 }}
+        sx={{
+          minHeight: 400,
+          "& .MuiDataGrid-virtualScroller": { flexGrow: 1 },
+        }}
       />
     </Container>
   );
