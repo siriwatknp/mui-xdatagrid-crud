@@ -61,7 +61,6 @@ const EditToolbar = () => {
 };
 
 function App() {
-  const apiRef = useGridApiRef();
   const query = useQuery({
     queryKey: ["products"],
     queryFn: () =>
@@ -83,6 +82,16 @@ function App() {
       }
     },
   });
+  const updater = useMutation({
+    mutationFn: (data: any) =>
+      fetch(`/products/${data.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+  });
   const rows = query.data ?? [];
   const [, setRows] = useState(rows); // to be removed later
   return (
@@ -92,23 +101,18 @@ function App() {
         Joy DataGrid - CRUD
       </Typography>
       <DataGrid
-        loading={query.isLoading || creator.isLoading}
+        loading={query.isLoading || creator.isLoading || updater.isLoading}
         editMode="row"
         processRowUpdate={async (row) => {
           const isExistingRow = !row.id.startsWith("__new-"); // check if row is new
           if (isExistingRow) {
-            setRows((prevRows) =>
-              prevRows.map((item) => (item.id === row.id ? row : item))
-            );
+            await updater.mutateAsync(row);
             return row;
           }
           const updatedRow = { ...row, id: v4() };
           await creator.mutateAsync(updatedRow);
           await query.refetch();
           return updatedRow;
-        }}
-        onProcessRowUpdateError={(error) => {
-          console.log(error);
         }}
         columns={[
           {
